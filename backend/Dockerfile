@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build
 
 # ── Runtime stage ────────────────────────────────────────────
-FROM node:20-slim AS runner
+FROM node:24-slim AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
