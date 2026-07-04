@@ -1,0 +1,45 @@
+name: Build & Push Images
+
+on:
+  push:
+    branches: [main, staging]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BASE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [backend, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image tag
+        id: vars
+        run: |
+          echo "env_name=$([ "${{ github.ref_name }}" = "main" ] && echo prod || echo staging)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          build-args: |
+            VITE_PLATFORM_MODE=${{ steps.vars.outputs.env_name == 'prod' && 'live' || 'demo' }}
+          tags: |
+            ${{ env.IMAGE_BASE }}-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.IMAGE_BASE }}-${{ matrix.service }}:${{ steps.vars.outputs.env_name }}-latest

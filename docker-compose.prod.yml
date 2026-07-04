@@ -1,0 +1,119 @@
+name: coinbidex-live
+
+services:
+  postgres-live:
+    image: postgres:16-alpine
+    container_name: cb_live_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: cb_live
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: cb_live_db
+    volumes:
+      - live_pg_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cb_live -d cb_live_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    # DB never exposed to internet — internal only
+
+  redis-live:
+    image: redis:7-alpine
+    container_name: cb_live_redis
+    restart: always
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - live_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Redis never exposed — internal only
+
+  backend-live:
+    image: ghcr.io/coinbidex/trading-coinbidex-backend:${IMAGE_TAG:-prod-latest}
+    container_name: cb_live_backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      PLATFORM_MODE: live
+      DATABASE_URL: postgresql://cb_live:${DB_PASSWORD}@postgres-live:5432/cb_live_db
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis-live:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      BCRYPT_ROUNDS: "12"
+      FRONTEND_URL: https://${DOMAIN}
+      # Allow both www and non-www
+      CORS_ORIGINS: https://${DOMAIN},https://www.${DOMAIN}
+      APP_NAME: Coinbidex
+      ONEINCH_API_KEY: ${ONEINCH_API_KEY:-}
+      REFERRAL_WALLET_ADDRESS: ${REFERRAL_WALLET_ADDRESS:-}
+      REFERRAL_FEE_BPS: ${REFERRAL_FEE_BPS:-30}
+      SWAP_MARKUP_PCT: ${SWAP_MARKUP_PCT:-0.3}
+      BINANCE_BROKER_API_KEY: ${BINANCE_BROKER_API_KEY:-}
+      BINANCE_BROKER_API_SECRET: ${BINANCE_BROKER_API_SECRET:-}
+      MOONPAY_PUBLISHABLE_KEY: ${MOONPAY_PUBLISHABLE_KEY:-}
+      MOONPAY_SECRET_KEY: ${MOONPAY_SECRET_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Coinbidex <noreply@coinbidex.com>}
+      ETH_RPC_URL: ${ETH_RPC_URL:-https://cloudflare-eth.com}
+      POLY_RPC_URL: ${POLY_RPC_URL:-https://polygon-rpc.com}
+      BSC_RPC_URL: ${BSC_RPC_URL:-https://bsc-dataseed.binance.org}
+    ports:
+      - "127.0.0.1:4000:4000"   # Only localhost — nginx proxies in
+    depends_on:
+      postgres-live:
+        condition: service_healthy
+      redis-live:
+        condition: service_healthy
+
+  frontend-live:
+    image: ghcr.io/coinbidex/trading-coinbidex-frontend:${IMAGE_TAG:-prod-latest}
+    # NOTE: VITE_* values are baked into the static build at CI build time
+    # (see .github/workflows/build.yml), not at container start. If you
+    # change a VITE_* value, push a commit — restarting the container alone
+    # will not pick it up.
+    container_name: cb_live_frontend
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"   # Only localhost — nginx proxies in
+    depends_on:
+      - backend-live
+
+  # Automated daily backup
+  backup:
+    image: postgres:16-alpine
+    container_name: cb_live_backup
+    restart: always
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    command: >
+      sh -c "while true; do
+        sleep 86400;
+        pg_dump -h postgres-live -U cb_live cb_live_db |
+          gzip > /backups/live_backup_$$(date +%Y%m%d_%H%M%S).sql.gz;
+        find /backups -name 'live_backup_*.sql.gz' -mtime +7 -delete;
+        echo '[backup] Live DB backed up at' $$(date);
+      done"
+    depends_on:
+      - postgres-live
+
+volumes:
+  live_pg_data:
+  live_redis_data:

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.npm
+*.log
+.env
+.env.live
+.env.local
+.env.*.local
+backups/*.sql.gz
+backups/*.sql
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

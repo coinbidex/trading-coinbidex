@@ -1,0 +1,63 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["Build & Push Images"]
+    types: [completed]
+
+jobs:
+  deploy-staging:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'staging'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy to VPS (staging)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          timeout: 300s
+          script: |
+            set -e
+            cd /var/www/coinbidex
+            git fetch origin staging
+            git checkout staging
+            git reset --hard origin/staging
+            export IMAGE_TAG=${{ github.event.workflow_run.head_sha }}
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env.staging
+            docker compose -f docker-compose.staging.yml --env-file .env.staging pull
+            docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --no-build
+            sleep 10
+            curl -sf http://localhost:4001/health && echo "✅ Staging healthy" || echo "❌ Staging health check failed"
+
+  deploy-production:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    environment: production   # set required reviewers on this Environment in repo Settings
+    steps:
+      - name: Deploy to VPS (production)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          timeout: 300s
+          script: |
+            set -e
+            cd /var/www/coinbidex
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            export IMAGE_TAG=${{ github.event.workflow_run.head_sha }}
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env.live
+            docker compose -f docker-compose.prod.yml --env-file .env.live pull
+            docker compose -f docker-compose.prod.yml --env-file .env.live up -d --no-build
+            sleep 15
+            curl -sf http://localhost:4000/health && echo "✅ Production healthy" || echo "❌ Production health check failed — check logs before assuming this deploy is safe"

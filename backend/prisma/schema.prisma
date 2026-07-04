@@ -1,0 +1,542 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  TRADER
+  MARKET_MAKER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum KYCStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+  STOP_LOSS
+  STOP_LIMIT
+  TAKE_PROFIT
+}
+
+enum OrderStatus {
+  PENDING
+  OPEN
+  PARTIALLY_FILLED
+  FILLED
+  CANCELLED
+  REJECTED
+  EXPIRED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRADE_BUY
+  TRADE_SELL
+  SWAP
+  FEE
+  REFERRAL_BONUS
+  LISTING_FEE
+  AD_PAYMENT
+  AIRDROP
+  STAKING_REWARD
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ListingStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  LIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum AdStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  EXPIRED
+  REJECTED
+}
+
+enum AdType {
+  BANNER
+  SPONSORED_LISTING
+  PUSH_NOTIFICATION
+  EMAIL_BLAST
+}
+
+enum SwapStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  username        String     @unique
+  passwordHash    String
+  role            UserRole   @default(USER)
+  status          UserStatus @default(PENDING)
+  kycStatus       KYCStatus  @default(NOT_SUBMITTED)
+  firstName       String?
+  lastName        String?
+  phone           String?
+  country         String?
+  avatarUrl       String?
+  referralCode    String     @unique @default(cuid())
+  referredBy      String?
+  twoFactorSecret String?
+  twoFactorEnabled Boolean   @default(false)
+  emailVerified   Boolean    @default(false)
+  emailVerifyToken String?
+  resetPasswordToken String?
+  resetPasswordExpiry DateTime?
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relations
+  wallets         Wallet[]
+  orders          Order[]
+  trades          Trade[]    @relation("UserTrades")
+  counterTrades   Trade[]    @relation("CounterPartyTrades")
+  transactions    Transaction[]
+  swaps           Swap[]
+  listings        Listing[]
+  advertisements  Advertisement[]
+  notifications   Notification[]
+  watchlist       WatchlistItem[]
+  apiKeys         ApiKey[]
+  sessions        Session[]
+  kycDocuments    KYCDocument[]
+  referrals       User[]     @relation("Referral")
+  referrer        User?      @relation("Referral", fields: [referredBy], references: [referralCode])
+  priceAlerts     PriceAlert[]
+
+  @@index([email])
+  @@index([username])
+  @@index([referralCode])
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  userId      String
+  token       String   @unique
+  refreshToken String  @unique
+  ipAddress   String?
+  userAgent   String?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model KYCDocument {
+  id          String    @id @default(uuid())
+  userId      String
+  docType     String    // passport, id_card, drivers_license
+  frontUrl    String
+  backUrl     String?
+  selfieUrl   String?
+  status      KYCStatus @default(PENDING)
+  reviewNote  String?
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ApiKey {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  keyHash     String   @unique
+  prefix      String
+  permissions String[] // read, trade, withdraw
+  ipWhitelist String[]
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Asset {
+  id              String   @id @default(uuid())
+  symbol          String   @unique
+  name            String
+  slug            String   @unique
+  logoUrl         String?
+  description     String?
+  website         String?
+  whitepaper      String?
+  contractAddress String?
+  blockchain      String?
+  decimals        Int      @default(8)
+  isActive        Boolean  @default(true)
+  isTradable      Boolean  @default(true)
+  isWithdrawable  Boolean  @default(true)
+  minWithdraw     Decimal  @default(0) @db.Decimal(28, 8)
+  maxWithdraw     Decimal  @default(0) @db.Decimal(28, 8)
+  withdrawFee     Decimal  @default(0) @db.Decimal(28, 8)
+  depositFee      Decimal  @default(0) @db.Decimal(28, 8)
+  rank            Int?
+  marketCap       Decimal? @db.Decimal(28, 2)
+  circulatingSupply Decimal? @db.Decimal(28, 8)
+  totalSupply     Decimal? @db.Decimal(28, 8)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  baseMarkets     Market[] @relation("BaseAsset")
+  quoteMarkets    Market[] @relation("QuoteAsset")
+  wallets         Wallet[]
+  listing         Listing?
+  priceHistory    PriceHistory[]
+  priceAlerts     PriceAlert[]
+
+  @@index([symbol])
+  @@index([slug])
+}
+
+model Market {
+  id              String   @id @default(uuid())
+  symbol          String   @unique // e.g. BTCUSDT
+  baseAssetId     String
+  quoteAssetId    String
+  isActive        Boolean  @default(true)
+  minOrderSize    Decimal  @default(0.00001) @db.Decimal(28, 8)
+  maxOrderSize    Decimal  @default(1000000) @db.Decimal(28, 8)
+  pricePrecision  Int      @default(8)
+  quantityPrecision Int    @default(8)
+  makerFee        Decimal  @default(0.001) @db.Decimal(10, 6)
+  takerFee        Decimal  @default(0.001) @db.Decimal(10, 6)
+  lastPrice       Decimal? @db.Decimal(28, 8)
+  priceChange24h  Decimal? @db.Decimal(28, 8)
+  priceChangePct  Decimal? @db.Decimal(10, 4)
+  volume24h       Decimal? @db.Decimal(28, 8)
+  high24h         Decimal? @db.Decimal(28, 8)
+  low24h          Decimal? @db.Decimal(28, 8)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  baseAsset       Asset    @relation("BaseAsset", fields: [baseAssetId], references: [id])
+  quoteAsset      Asset    @relation("QuoteAsset", fields: [quoteAssetId], references: [id])
+  orders          Order[]
+  trades          Trade[]
+
+  @@index([symbol])
+  @@index([baseAssetId])
+  @@index([quoteAssetId])
+}
+
+model Wallet {
+  id              String   @id @default(uuid())
+  userId          String
+  assetId         String
+  address         String?
+  balance         Decimal  @default(0) @db.Decimal(28, 8)
+  lockedBalance   Decimal  @default(0) @db.Decimal(28, 8)
+  totalDeposited  Decimal  @default(0) @db.Decimal(28, 8)
+  totalWithdrawn  Decimal  @default(0) @db.Decimal(28, 8)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset           Asset    @relation(fields: [assetId], references: [id])
+
+  @@unique([userId, assetId])
+  @@index([userId])
+  @@index([assetId])
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  userId          String
+  marketId        String
+  side            OrderSide
+  type            OrderType
+  status          OrderStatus @default(PENDING)
+  price           Decimal?    @db.Decimal(28, 8)
+  stopPrice       Decimal?    @db.Decimal(28, 8)
+  quantity        Decimal     @db.Decimal(28, 8)
+  filledQuantity  Decimal     @default(0) @db.Decimal(28, 8)
+  remainingQty    Decimal     @db.Decimal(28, 8)
+  avgFillPrice    Decimal?    @db.Decimal(28, 8)
+  totalValue      Decimal?    @db.Decimal(28, 8)
+  fee             Decimal     @default(0) @db.Decimal(28, 8)
+  feeAsset        String?
+  clientOrderId  String?
+  notes           String?
+  expiresAt       DateTime?
+  filledAt        DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user            User        @relation(fields: [userId], references: [id])
+  market          Market      @relation(fields: [marketId], references: [id])
+  trades          Trade[]
+
+  @@index([userId])
+  @@index([marketId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Trade {
+  id              String   @id @default(uuid())
+  marketId        String
+  orderId         String
+  userId          String
+  counterUserId   String?
+  side            OrderSide
+  price           Decimal  @db.Decimal(28, 8)
+  quantity        Decimal  @db.Decimal(28, 8)
+  quoteQuantity   Decimal  @db.Decimal(28, 8)
+  fee             Decimal  @db.Decimal(28, 8)
+  feeAsset        String
+  isMaker         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  market          Market   @relation(fields: [marketId], references: [id])
+  order           Order    @relation(fields: [orderId], references: [id])
+  user            User     @relation("UserTrades", fields: [userId], references: [id])
+  counterUser     User?    @relation("CounterPartyTrades", fields: [counterUserId], references: [id])
+
+  @@index([marketId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  userId          String
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  asset           String
+  amount          Decimal           @db.Decimal(28, 8)
+  fee             Decimal           @default(0) @db.Decimal(28, 8)
+  netAmount       Decimal           @db.Decimal(28, 8)
+  txHash          String?
+  address         String?
+  network         String?
+  memo            String?
+  description     String?
+  metadata        Json?
+  processedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user            User              @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Swap {
+  id              String     @id @default(uuid())
+  userId          String
+  fromAsset       String
+  toAsset         String
+  fromAmount      Decimal    @db.Decimal(28, 8)
+  toAmount        Decimal    @db.Decimal(28, 8)
+  exchangeRate    Decimal    @db.Decimal(28, 8)
+  fee             Decimal    @db.Decimal(28, 8)
+  feeAsset        String
+  status          SwapStatus @default(PENDING)
+  slippage        Decimal?   @db.Decimal(10, 4)
+  txHash          String?
+  completedAt     DateTime?
+  createdAt       DateTime   @default(now())
+
+  user            User       @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Listing {
+  id              String        @id @default(uuid())
+  userId          String
+  assetId         String        @unique
+  status          ListingStatus @default(PENDING)
+  projectName     String
+  tokenSymbol     String
+  tokenName       String
+  description     String
+  website         String
+  whitepaper      String?
+  github          String?
+  twitter         String?
+  telegram        String?
+  discord         String?
+  totalSupply     String
+  circulatingSupply String?
+  contractAddress String?
+  blockchain      String
+  auditReport     String?
+  logoUrl         String?
+  bannerUrl       String?
+  listingFee      Decimal       @db.Decimal(28, 8)
+  feePaid         Boolean       @default(false)
+  reviewNotes     String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  listedAt        DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id])
+  asset           Asset         @relation(fields: [assetId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Advertisement {
+  id              String    @id @default(uuid())
+  userId          String
+  type            AdType
+  status          AdStatus  @default(DRAFT)
+  title           String
+  description     String?
+  imageUrl        String?
+  targetUrl       String?
+  budget          Decimal   @db.Decimal(28, 8)
+  spent           Decimal   @default(0) @db.Decimal(28, 8)
+  cpc             Decimal?  @db.Decimal(28, 8) // cost per click
+  cpm             Decimal?  @db.Decimal(28, 8) // cost per 1000 impressions
+  impressions     Int       @default(0)
+  clicks          Int       @default(0)
+  targetCountries String[]
+  targetAssets    String[]
+  startDate       DateTime?
+  endDate         DateTime?
+  reviewNotes     String?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model PriceHistory {
+  id          String   @id @default(uuid())
+  assetId     String
+  open        Decimal  @db.Decimal(28, 8)
+  high        Decimal  @db.Decimal(28, 8)
+  low         Decimal  @db.Decimal(28, 8)
+  close       Decimal  @db.Decimal(28, 8)
+  volume      Decimal  @db.Decimal(28, 8)
+  interval    String   // 1m, 5m, 15m, 1h, 4h, 1d
+  timestamp   DateTime
+
+  asset       Asset    @relation(fields: [assetId], references: [id])
+
+  @@unique([assetId, interval, timestamp])
+  @@index([assetId, interval, timestamp])
+}
+
+model PriceAlert {
+  id          String   @id @default(uuid())
+  userId      String
+  assetId     String
+  condition   String   // above, below
+  price       Decimal  @db.Decimal(28, 8)
+  triggered   Boolean  @default(false)
+  triggeredAt DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset       Asset    @relation(fields: [assetId], references: [id])
+
+  @@index([userId])
+  @@index([assetId, isActive])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String
+  title       String
+  message     String
+  data        Json?
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model WatchlistItem {
+  id          String   @id @default(uuid())
+  userId      String
+  symbol      String
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@index([userId])
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
