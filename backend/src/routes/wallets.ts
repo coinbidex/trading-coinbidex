@@ -1,8 +1,10 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { body } from 'express-validator';
+import axios from 'axios';
 import { getWallets, getWalletBalance, deposit, withdraw, getPortfolioSummary } from '../controllers/walletController';
-import { authenticate } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { validate } from '../middleware/validate';
+import { prisma } from '../utils/prisma';
 
 const router = Router();
 router.use(authenticate);
@@ -20,19 +22,15 @@ router.post('/withdraw', [
   body('address').notEmpty().trim(),
 ], validate, withdraw);
 
-export default router;
-
-import { Request } from 'express';
-import axios from 'axios';
-
 // Fetch real on-chain ERC20 balances for a wallet address
 // Called by the frontend to avoid exposing RPC calls from the browser
 router.get('/onchain-balances', async (req: Request, res: Response) => {
   try {
-    const { address, chainId = '1' } = req.query;
+    const address = req.query.address as string | undefined;
+    const chainId = (req.query.chainId as string) || '1';
     if (!address) return res.status(400).json({ success: false, message: 'address required' });
 
-    const chain = parseInt(chainId as string);
+    const chain = parseInt(chainId);
 
     // RPC endpoints (use your own Infura/Alchemy key for production)
     const RPC_URLS: Record<number, string> = {
@@ -72,7 +70,7 @@ router.get('/onchain-balances', async (req: Request, res: Response) => {
       params: [{
         to: token.address,
         // balanceOf(address) selector = 0x70a08231
-        data: '0x70a08231000000000000000000000000' + (address as string).slice(2).padStart(64, '0'),
+        data: '0x70a08231000000000000000000000000' + address.slice(2).padStart(64, '0'),
       }, 'latest'],
       id: i,
     }));
@@ -131,3 +129,5 @@ router.post('/connect-external', authenticate, async (req: AuthRequest, res: Res
     res.json({ success: true }); // non-fatal
   }
 });
+
+export default router;

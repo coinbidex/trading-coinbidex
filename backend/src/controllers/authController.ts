@@ -139,16 +139,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const hashToCompare = user?.passwordHash ?? '$2b$12$invalidhashfortimingsafety0000000000000000'
     
     const valid = await bcrypt.compare(password, hashToCompare)
-    const testHash = await bcrypt.hash(password, 12)
 
-logger.info({
-  password,
-  generatedHash: testHash,
-  storedHash: user?.passwordHash,
-  compareResult: valid,
-})
     if (!user || !valid) {
-      logger.info(user, hashToCompare);
       res.status(401).json({ success: false, message: 'Invalid email or password' })
       return
     }

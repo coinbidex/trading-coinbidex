@@ -321,8 +321,8 @@ export const getOrderBook = async (req: AuthRequest, res: Response) => {
 
     const orderbook = {
       symbol: symbol.toUpperCase(),
-      bids: bids.map(b => [b.price?.toString(), b._sum.remainingQty?.toString()]),
-      asks: asks.map(a => [a.price?.toString(), a._sum.remainingQty?.toString()]),
+      bids: bids.map(b => [b.price?.toString(), b._sum?.remainingQty?.toString()]),
+      asks: asks.map(a => [a.price?.toString(), a._sum?.remainingQty?.toString()]),
       timestamp: Date.now()
     };
 

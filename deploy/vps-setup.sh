@@ -105,6 +105,9 @@ echo "  New projects later: just 'mkdir /var/www/coinbidex/<name>' and clone int
 log "Setting up the GitHub-Actions → VPS deploy key..."
 mkdir -p /home/deploy/.ssh
 touch /home/deploy/.ssh/authorized_keys
+chown -R deploy:deploy /home/deploy/.ssh
+chmod 700 /home/deploy/.ssh
+chmod 600 /home/deploy/.ssh/authorized_keys
 if [ ! -f /home/deploy/.ssh/coinbidex_deploy ]; then
   sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/coinbidex_deploy -N "" -C "github-actions-to-vps"
   ok "Generated /home/deploy/.ssh/coinbidex_deploy"

@@ -16,6 +16,23 @@
 # =============================================================
 set -e
 
+# This script writes to /etc/nginx, /etc/letsencrypt, and calls systemctl —
+# all of which need root. Re-exec with sudo automatically instead of
+# failing halfway through with confusing permission errors.
+if [ "$EUID" -ne 0 ]; then
+  echo "Root privileges needed for Nginx/Certbot/systemctl — re-running with sudo..."
+  exec sudo -E bash "$0" "$@"
+fi
+
+# docker pull/compose below now run as root (we just elevated). If you did
+# `docker login ghcr.io` as the deploy user earlier, root won't have those
+# credentials yet — copy them over so the pull doesn't fail with "unauthorized".
+if [ -f /home/deploy/.docker/config.json ] && [ ! -f /root/.docker/config.json ]; then
+  mkdir -p /root/.docker
+  cp /home/deploy/.docker/config.json /root/.docker/config.json
+  echo "Copied GHCR login from deploy user to root."
+fi
+
 TRADE_DOMAIN=${1:?"Usage: bash deploy/deploy.sh trade.coinbidex.com you@yourdomain.com"}
 EMAIL=${2:?"Usage: bash deploy/deploy.sh trade.coinbidex.com you@yourdomain.com"}
 BASE_DOMAIN="${TRADE_DOMAIN#*.}"                 # coinbidex.com
@@ -43,13 +60,18 @@ echo -e "  DB UI   : ${BLUE}https://${DB_UI_DOMAIN}${NC}   ($SHARED_DIR)"
 echo ""
 
 # ── Env file template generator ────────────────────────────────
+# $mode     = PLATFORM_MODE the app runs in (live/demo — app-level concept)
+# $tag_pref = the image tag prefix CI actually pushes (see .github/workflows/build.yml:
+#             main branch -> "prod", staging branch -> "staging"). These are NOT
+#             always the same word as $mode, which is why they're separate args —
+#             mixing them up is exactly what breaks `docker compose pull`.
 make_env_template() {
-  local dir=$1 domain=$2 mode=$3
+  local dir=$1 domain=$2 mode=$3 tag_prefix=$4
   cat > "$dir/.env.$mode" << ENV
 DOMAIN=${domain}
 NODE_ENV=production
 PLATFORM_MODE=${mode}
-IMAGE_TAG=${mode}-latest
+IMAGE_TAG=${tag_prefix}-latest
 
 DB_PASSWORD=$(openssl rand -hex 32)
 REDIS_PASSWORD=$(openssl rand -hex 32)
@@ -71,7 +93,7 @@ SMTP_HOST=
 SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
-SMTP_FROM=Coinbidex <noreply@${domain}>
+SMTP_FROM="Coinbidex <noreply@${domain}>"
 
 VITE_WALLETCONNECT_PROJECT_ID=
 ETH_RPC_URL=https://cloudflare-eth.com
@@ -83,12 +105,12 @@ ENV
 NEEDS_ENV_FILL=0
 if [ ! -f "$LIVE_DIR/.env.live" ]; then
   warn ".env.live not found — generating template in $LIVE_DIR"
-  make_env_template "$LIVE_DIR" "$TRADE_DOMAIN" "live"
+  make_env_template "$LIVE_DIR" "$TRADE_DOMAIN" "live" "prod"
   NEEDS_ENV_FILL=1
 fi
 if [ ! -f "$STAGING_DIR/.env.staging" ]; then
   warn ".env.staging not found — generating template in $STAGING_DIR"
-  make_env_template "$STAGING_DIR" "$STAGING_DOMAIN" "staging"
+  make_env_template "$STAGING_DIR" "$STAGING_DOMAIN" "staging" "staging"
   NEEDS_ENV_FILL=1
 fi
 if [ $NEEDS_ENV_FILL -eq 1 ]; then
@@ -122,11 +144,18 @@ done
 systemctl start nginx
 
 # ── Write Nginx config ────────────────────────────────────────
+# Each server block only gets written if its cert actually exists — a DNS
+# hiccup on one domain (e.g. staging not pointed here yet) shouldn't take
+# down the other two working sites.
 log "Writing Nginx configuration..."
 cat > /etc/nginx/sites-available/coinbidex << NGINX
 # Rate limiting
 limit_req_zone \$binary_remote_addr zone=api_live:10m  rate=60r/m;
 limit_req_zone \$binary_remote_addr zone=auth_live:10m rate=10r/m;
+NGINX
+
+if [ -d "/etc/letsencrypt/live/$TRADE_DOMAIN" ]; then
+cat >> /etc/nginx/sites-available/coinbidex << NGINX
 
 # ── LIVE: ${TRADE_DOMAIN} ────────────────────────────────────
 server {
@@ -200,6 +229,14 @@ server {
         proxy_cache_bypass \$http_upgrade;
     }
 }
+NGINX
+  ok "Nginx: live server block added"
+else
+  warn "Skipping live server block — no cert for $TRADE_DOMAIN yet"
+fi
+
+if [ -d "/etc/letsencrypt/live/$STAGING_DOMAIN" ]; then
+cat >> /etc/nginx/sites-available/coinbidex << NGINX
 
 # ── STAGING: ${STAGING_DOMAIN} ────────────────────────────────
 server {
@@ -252,6 +289,14 @@ server {
         proxy_set_header   Host \$host;
     }
 }
+NGINX
+  ok "Nginx: staging server block added"
+else
+  warn "Skipping staging server block — no cert for $STAGING_DOMAIN yet (fix DNS, then re-run this script)"
+fi
+
+if [ -d "/etc/letsencrypt/live/$DB_UI_DOMAIN" ]; then
+cat >> /etc/nginx/sites-available/coinbidex << NGINX
 
 # ── DB UI (pgAdmin): ${DB_UI_DOMAIN} ──────────────────────────
 server {
@@ -282,11 +327,18 @@ server {
     }
 }
 NGINX
+  ok "Nginx: db UI server block added"
+else
+  warn "Skipping db UI server block — no cert for $DB_UI_DOMAIN yet (fix DNS, then re-run this script)"
+fi
 
 ln -sf /etc/nginx/sites-available/coinbidex /etc/nginx/sites-enabled/coinbidex
 rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl reload nginx
-ok "Nginx configured for live + staging + db UI"
+if ! nginx -t; then
+  err "Nginx config test failed — see the error above. Not reloading nginx to avoid taking down what's already working. Fix the issue and re-run this script."
+fi
+systemctl reload nginx
+ok "Nginx reloaded"
 
 # ── Start containers ──────────────────────────────────────────
 # Images are built by GitHub Actions and pushed to GHCR — this VPS only

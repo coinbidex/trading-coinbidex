@@ -60,6 +60,7 @@ export async function getRevenueSummary(): Promise<any> {
       where: { type: 'FEE', status: 'COMPLETED' },
       _sum: { amount: true },
       _count: true,
+      orderBy: { _sum: { amount: 'desc' } },
     })
   ]);
 
@@ -69,7 +70,7 @@ export async function getRevenueSummary(): Promise<any> {
     today:   parseFloat(totalToday._sum.amount?.toString() || '0'),
     bySource: bySource.map(r => ({
       source: r.description?.replace('Revenue: ', ''),
-      total:  parseFloat(r._sum.amount?.toString() || '0'),
+      total:  parseFloat(r._sum?.amount?.toString() || '0'),
       count:  r._count,
     }))
   };
