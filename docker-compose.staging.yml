@@ -12,14 +12,16 @@ services:
     volumes:
       - staging_pg_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./backups:/backups
+    ports:
+      - "127.0.0.1:5433:5432"   # loopback only, different host port than live (5432)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cb_staging -d cb_staging_db"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 15s
-    # DB never exposed to internet — internal only
+    # Bound to 127.0.0.1 only — never reachable from the internet, only from
+    # this VPS itself (including the shared pgAdmin container). See ../shared/
 
   redis-staging:
     image: redis:7-alpine
@@ -93,26 +95,6 @@ services:
       - "127.0.0.1:3010:3000"   # Only localhost — nginx proxies in
     depends_on:
       - backend-staging
-
-  # Automated daily backup
-  backup:
-    image: postgres:16-alpine
-    container_name: cb_staging_backup
-    restart: always
-    environment:
-      PGPASSWORD: ${DB_PASSWORD}
-    volumes:
-      - ./backups:/backups
-    command: >
-      sh -c "while true; do
-        sleep 86400;
-        pg_dump -h postgres-staging -U cb_staging cb_staging_db |
-          gzip > /backups/staging_backup_$$(date +%Y%m%d_%H%M%S).sql.gz;
-        find /backups -name 'staging_backup_*.sql.gz' -mtime +7 -delete;
-        echo '[backup] Live DB backed up at' $$(date);
-      done"
-    depends_on:
-      - postgres-staging
 
 volumes:
   staging_pg_data:

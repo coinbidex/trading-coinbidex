@@ -39,7 +39,7 @@ jobs:
           context: ./${{ matrix.service }}
           push: true
           build-args: |
-            VITE_PLATFORM_MODE=${{ steps.vars.outputs.env_name == 'prod' && 'live' || 'demo' }}
+            VITE_PLATFORM_MODE=live
           tags: |
             ${{ env.IMAGE_BASE }}-${{ matrix.service }}:${{ github.sha }}
             ${{ env.IMAGE_BASE }}-${{ matrix.service }}:${{ steps.vars.outputs.env_name }}-latest

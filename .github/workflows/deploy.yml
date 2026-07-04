@@ -23,16 +23,15 @@ jobs:
           timeout: 300s
           script: |
             set -e
-            cd /var/www/coinbidex
+            cd /var/www/coinbidex/staging-trading-coinbidex
             git fetch origin staging
-            git checkout staging
             git reset --hard origin/staging
             export IMAGE_TAG=${{ github.event.workflow_run.head_sha }}
             sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env.staging
             docker compose -f docker-compose.staging.yml --env-file .env.staging pull
             docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --no-build
             sleep 10
-            curl -sf http://localhost:4001/health && echo "✅ Staging healthy" || echo "❌ Staging health check failed"
+            curl -sf http://localhost:4010/health && echo "✅ Staging healthy" || echo "❌ Staging health check failed"
 
   deploy-production:
     if: >
@@ -51,9 +50,8 @@ jobs:
           timeout: 300s
           script: |
             set -e
-            cd /var/www/coinbidex
+            cd /var/www/coinbidex/trading-coinbidex
             git fetch origin main
-            git checkout main
             git reset --hard origin/main
             export IMAGE_TAG=${{ github.event.workflow_run.head_sha }}
             sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env.live

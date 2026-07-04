@@ -1,0 +1,33 @@
+# Shared infrastructure — not tied to any single project.
+# Currently: pgAdmin, giving you one web UI (db.coinbidex.com) to browse
+# both the live and staging Postgres databases side by side.
+#
+# This directory is NOT part of the git repo checkouts — it's created once
+# directly on the VPS (see deploy/vps-setup.sh) and lives at
+# /var/www/coinbidex/shared, alongside (not inside) the two project folders.
+
+name: coinbidex-shared
+
+services:
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cb_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: "True"
+      # Preloads the Live + Staging server connections below on first boot
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+    ports:
+      - "127.0.0.1:5050:80"   # loopback only — nginx proxies db.coinbidex.com to this
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
+    extra_hosts:
+      # Lets this container reach Postgres containers in the other two
+      # project stacks via the ports they publish on the VPS's loopback.
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  pgadmin_data:

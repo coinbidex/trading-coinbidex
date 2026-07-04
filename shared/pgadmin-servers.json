@@ -1,0 +1,24 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Coinbidex — LIVE",
+      "Group": "Coinbidex",
+      "Host": "host.docker.internal",
+      "Port": 5432,
+      "MaintenanceDB": "cb_live_db",
+      "Username": "cb_live",
+      "SSLMode": "prefer",
+      "Comment": "Production database — be careful."
+    },
+    "2": {
+      "Name": "Coinbidex — STAGING",
+      "Group": "Coinbidex",
+      "Host": "host.docker.internal",
+      "Port": 5433,
+      "MaintenanceDB": "cb_staging_db",
+      "Username": "cb_staging",
+      "SSLMode": "prefer",
+      "Comment": "Safe to experiment on."
+    }
+  }
+}
