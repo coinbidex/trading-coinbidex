@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:seed": "tsx src/utils/seed.ts",
+    "prisma:seed:prod": "node dist/utils/seed.js",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
