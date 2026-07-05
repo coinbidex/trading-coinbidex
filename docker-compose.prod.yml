@@ -57,7 +57,8 @@ services:
       BCRYPT_ROUNDS: "12"
       FRONTEND_URL: https://${DOMAIN}
       # Allow both www and non-www
-      CORS_ORIGINS: https://${DOMAIN},https://www.${DOMAIN}
+      CORS_ORIGINS: https://${DOMAIN},https://www.${DOMAIN},https://coinbidex.com,https://www.coinbidex.com
+      COOKIE_DOMAIN: .coinbidex.com
       APP_NAME: Coinbidex
       ONEINCH_API_KEY: ${ONEINCH_API_KEY:-}
       REFERRAL_WALLET_ADDRESS: ${REFERRAL_WALLET_ADDRESS:-}

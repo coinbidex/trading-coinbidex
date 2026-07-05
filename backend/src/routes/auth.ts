@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
 import {
-  register, login, refreshToken, logout, getMe,
+  register, login, refreshToken, logout, getMe, sessionStatus,
   verifyEmail, forgotPassword, resetPassword, resendVerificationEmail,
 } from '../controllers/authController'
 import { authenticate } from '../middleware/auth'
@@ -22,6 +22,7 @@ router.post('/login', [
 
 router.post('/refresh',         refreshToken)
 router.post('/logout',          authenticate, logout)
+router.get('/session',          sessionStatus)  // public — called by coinbidex.com, cookie-based, no tokens returned
 router.get('/me',               authenticate, getMe)
 router.get('/verify-email',     verifyEmail)
 router.post('/resend-verification', resendVerificationEmail)

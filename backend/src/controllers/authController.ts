@@ -27,6 +27,35 @@ function generateTokens(userId: string) {
   return { accessToken, refreshToken }
 }
 
+// The trading app (trade.coinbidex.com) is the source of truth for auth.
+// The marketing site (coinbidex.com) needs to know *whether* someone is
+// logged in and their basic display info (name/avatar) — without ever
+// having direct access to the access/refresh tokens themselves, which stay
+// in the trading app's own storage only.
+//
+// We do this with a separate, minimal, httpOnly cookie scoped to the shared
+// parent domain (.coinbidex.com) so both subdomains receive it. It carries
+// only a userId claim, nothing else — it cannot be used to call any
+// authenticated trading-app endpoint on its own.
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined // e.g. ".coinbidex.com" in production
+const SESSION_COOKIE = 'cb_session'
+
+function setCrossSiteSessionCookie(res: Response, userId: string) {
+  const sessionToken = jwt.sign({ userId, type: 'session_display' }, JWT_SECRET, { expiresIn: '30d', algorithm: 'HS256' })
+  res.cookie(SESSION_COOKIE, sessionToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',       // required for coinbidex.com's cross-origin fetch to receive it
+    domain: COOKIE_DOMAIN,  // undefined in dev = falls back to host-only cookie, still fine
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: '/',
+  })
+}
+
+function clearCrossSiteSessionCookie(res: Response) {
+  res.clearCookie(SESSION_COOKIE, { domain: COOKIE_DOMAIN, path: '/' })
+}
+
 // ── Register ──────────────────────────────────────────────────
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -102,6 +131,21 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     logger.info(`New user registered: ${user.email} [${platformConfig.mode}]`)
 
+    const { accessToken, refreshToken } = generateTokens(user.id)
+
+    await prisma.session.create({
+      data: {
+        userId:    user.id,
+        token:     accessToken,
+        refreshToken,
+        ipAddress: req.ip || '',
+        userAgent: req.headers['user-agent'] || '',
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      }
+    })
+
+    setCrossSiteSessionCookie(res, user.id)
+
     res.status(201).json({
       success: true,
       message: platformConfig.isDemo
@@ -111,8 +155,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         user: {
           id: user.id, email: user.email, username: user.username,
           role: user.role, emailVerified: user.emailVerified,
+          kycStatus: user.kycStatus, referralCode: user.referralCode,
+          avatarUrl: user.avatarUrl ?? null,
         },
-        
+        accessToken,
         refreshToken,
       }
     })
@@ -173,6 +219,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     })
 
     await cache.del(`user:${user.id}`)
+
+    setCrossSiteSessionCookie(res, user.id)
 
     // Login alert email (live only)
     if (platformConfig.sendLoginAlerts && user.emailVerified) {
@@ -240,6 +288,8 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       }
     })
 
+    setCrossSiteSessionCookie(res, decoded.userId)
+
     res.json({ success: true, data: { accessToken, refreshToken: newRefresh } })
   } catch (err) {
     logger.error('Refresh error:', err)
@@ -255,10 +305,59 @@ export const logout = async (req: AuthRequest, res: Response): Promise<void> => 
       await cache.set(`blacklist:${token}`, '1', 900)
       await prisma.session.deleteMany({ where: { token } })
     }
+    clearCrossSiteSessionCookie(res)
     res.json({ success: true, message: 'Logged out successfully' })
   } catch (err) {
     logger.error('Logout error:', err)
     res.status(500).json({ success: false, message: 'Logout failed' })
+  }
+}
+
+// ── Cross-site session status (called by coinbidex.com) ────────
+// Public endpoint — reads the httpOnly cb_session cookie (not the
+// Authorization header) and returns only what the marketing site needs to
+// render "logged in" state: display name and avatar. Never returns tokens.
+export const sessionStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const token = req.cookies?.[SESSION_COOKIE]
+    if (!token) {
+      res.json({ success: true, data: { loggedIn: false } })
+      return
+    }
+
+    let decoded: any
+    try {
+      decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] })
+    } catch {
+      res.json({ success: true, data: { loggedIn: false } })
+      return
+    }
+
+    if (decoded.type !== 'session_display') {
+      res.json({ success: true, data: { loggedIn: false } })
+      return
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, username: true, avatarUrl: true, status: true },
+    })
+
+    if (!user || user.status !== 'ACTIVE') {
+      res.json({ success: true, data: { loggedIn: false } })
+      return
+    }
+
+    res.json({
+      success: true,
+      data: {
+        loggedIn: true,
+        user: { username: user.username, avatarUrl: user.avatarUrl ?? null },
+      },
+    })
+  } catch (err) {
+    logger.error('Session status error:', err)
+    res.json({ success: true, data: { loggedIn: false } })
   }
 }
 

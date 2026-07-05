@@ -148,14 +148,21 @@ systemctl start nginx
 # hiccup on one domain (e.g. staging not pointed here yet) shouldn't take
 # down the other two working sites.
 log "Writing Nginx configuration..."
-cat > /etc/nginx/sites-available/coinbidex << NGINX
+
+# One-time cleanup: earlier versions of this script wrote to a shared
+# /etc/nginx/sites-available/coinbidex file. Now every project gets its own
+# file (trading-coinbidex, coinbidex-site, ...) so deploying one never
+# clobbers another's config.
+rm -f /etc/nginx/sites-enabled/coinbidex /etc/nginx/sites-available/coinbidex
+
+cat > /etc/nginx/sites-available/trading-coinbidex << NGINX
 # Rate limiting
 limit_req_zone \$binary_remote_addr zone=api_live:10m  rate=60r/m;
 limit_req_zone \$binary_remote_addr zone=auth_live:10m rate=10r/m;
 NGINX
 
 if [ -d "/etc/letsencrypt/live/$TRADE_DOMAIN" ]; then
-cat >> /etc/nginx/sites-available/coinbidex << NGINX
+cat >> /etc/nginx/sites-available/trading-coinbidex << NGINX
 
 # ── LIVE: ${TRADE_DOMAIN} ────────────────────────────────────
 server {
@@ -236,7 +243,7 @@ else
 fi
 
 if [ -d "/etc/letsencrypt/live/$STAGING_DOMAIN" ]; then
-cat >> /etc/nginx/sites-available/coinbidex << NGINX
+cat >> /etc/nginx/sites-available/trading-coinbidex << NGINX
 
 # ── STAGING: ${STAGING_DOMAIN} ────────────────────────────────
 server {
@@ -296,7 +303,7 @@ else
 fi
 
 if [ -d "/etc/letsencrypt/live/$DB_UI_DOMAIN" ]; then
-cat >> /etc/nginx/sites-available/coinbidex << NGINX
+cat >> /etc/nginx/sites-available/trading-coinbidex << NGINX
 
 # ── DB UI (pgAdmin): ${DB_UI_DOMAIN} ──────────────────────────
 server {
@@ -332,7 +339,7 @@ else
   warn "Skipping db UI server block — no cert for $DB_UI_DOMAIN yet (fix DNS, then re-run this script)"
 fi
 
-ln -sf /etc/nginx/sites-available/coinbidex /etc/nginx/sites-enabled/coinbidex
+ln -sf /etc/nginx/sites-available/trading-coinbidex /etc/nginx/sites-enabled/trading-coinbidex
 rm -f /etc/nginx/sites-enabled/default
 if ! nginx -t; then
   err "Nginx config test failed — see the error above. Not reloading nginx to avoid taking down what's already working. Fix the issue and re-run this script."
