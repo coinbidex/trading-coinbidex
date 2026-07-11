@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Eye, EyeOff, UserPlus } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import toast from 'react-hot-toast'
@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 export default function RegisterPage() {
   const { register, isLoading } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const [form, setForm] = useState({ email: '', username: '', password: '', confirm: '', referralCode: '' })
   const [showPw, setShowPw] = useState(false)
 
@@ -19,7 +20,10 @@ export default function RegisterPage() {
     try {
       await register({ email: form.email, username: form.username, password: form.password, referralCode: form.referralCode || undefined })
       toast.success('Account created. Please verify your email before signing in.')
-      navigate('/login')
+      // Carry the original intended destination (if any) through to /login,
+      // so logging in after verifying still lands back where the user
+      // actually wanted to go, not just /dashboard.
+      navigate('/login', { state: location.state })
     } catch (err: any) {
       toast.error(err.message || 'Registration failed')
     }

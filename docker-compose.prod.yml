@@ -1,5 +1,9 @@
 name: coinbidex-live
 
+networks:
+  default:
+    name: coinbidex-live-net
+
 services:
   postgres-live:
     image: postgres:16-alpine
@@ -12,16 +16,15 @@ services:
     volumes:
       - live_pg_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "127.0.0.1:5432:5432"   # loopback only — reachable by pgAdmin on this VPS, not the internet
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cb_live -d cb_live_db"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 15s
-    # Bound to 127.0.0.1 only — never reachable from the internet, only from
-    # this VPS itself (including the shared pgAdmin container). See ../shared/
+    # Never published to the host at all — not even 127.0.0.1. Only reachable
+    # from other containers on the coinbidex-live-net Docker network (backend-live,
+    # and the shared pgAdmin container, which joins this network explicitly).
 
   redis-live:
     image: redis:7-alpine

@@ -5,6 +5,14 @@
 # This directory is NOT part of the git repo checkouts — it's created once
 # directly on the VPS (see deploy/vps-setup.sh) and lives at
 # /var/www/coinbidex/shared, alongside (not inside) the two project folders.
+#
+# pgAdmin joins both projects' Docker networks directly and talks to
+# Postgres by container name (postgres-live / postgres-staging) — neither
+# database is ever published to the host's network at all, not even on
+# 127.0.0.1. This is more secure than the host-port approach it replaces,
+# and also just works, unlike routing through host.docker.internal to a
+# port that's bound to the host's loopback only (that path silently times
+# out — loopback-bound ports aren't reachable from the Docker bridge).
 
 name: coinbidex-shared
 
@@ -24,10 +32,15 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
-    extra_hosts:
-      # Lets this container reach Postgres containers in the other two
-      # project stacks via the ports they publish on the VPS's loopback.
-      - "host.docker.internal:host-gateway"
+    networks:
+      - coinbidex-live-net
+      - coinbidex-staging-net
+
+networks:
+  coinbidex-live-net:
+    external: true   # created by ../trading-coinbidex/docker-compose.prod.yml
+  coinbidex-staging-net:
+    external: true   # created by ../staging-trading-coinbidex/docker-compose.staging.yml
 
 volumes:
   pgadmin_data:
