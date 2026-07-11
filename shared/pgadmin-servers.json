@@ -3,7 +3,7 @@
     "1": {
       "Name": "Coinbidex — LIVE",
       "Group": "Coinbidex",
-      "Host": "host.docker.internal",
+      "Host": "postgres-live",
       "Port": 5432,
       "MaintenanceDB": "cb_live_db",
       "Username": "cb_live",
@@ -13,8 +13,8 @@
     "2": {
       "Name": "Coinbidex — STAGING",
       "Group": "Coinbidex",
-      "Host": "host.docker.internal",
-      "Port": 5433,
+      "Host": "postgres-staging",
+      "Port": 5432,
       "MaintenanceDB": "cb_staging_db",
       "Username": "cb_staging",
       "SSLMode": "prefer",

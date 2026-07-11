@@ -1,5 +1,9 @@
 name: coinbidex-staging
 
+networks:
+  default:
+    name: coinbidex-staging-net
+
 services:
   postgres-staging:
     image: postgres:16-alpine
@@ -12,16 +16,16 @@ services:
     volumes:
       - staging_pg_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "127.0.0.1:5433:5432"   # loopback only, different host port than live (5432)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cb_staging -d cb_staging_db"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 15s
-    # Bound to 127.0.0.1 only — never reachable from the internet, only from
-    # this VPS itself (including the shared pgAdmin container). See ../shared/
+    # Never published to the host at all — not even 127.0.0.1. Only reachable
+    # from other containers on the coinbidex-staging-net Docker network
+    # (backend-staging, and the shared pgAdmin container, which joins this
+    # network explicitly).
 
   redis-staging:
     image: redis:7-alpine

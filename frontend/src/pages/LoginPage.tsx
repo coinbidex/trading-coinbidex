@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import toast from 'react-hot-toast'
@@ -7,6 +7,14 @@ import toast from 'react-hot-toast'
 export default function LoginPage() {
   const { login, isLoading } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  // If Protected/AdminOnly bounced the user here, location.state.from holds
+  // where they were actually trying to go — send them back there instead of
+  // always landing on /dashboard. Falls back to /dashboard for a direct,
+  // unprompted visit to /login (state is undefined in that case).
+  const from = (location.state as { from?: Location })?.from
+  const redirectTo = from ? `${from.pathname}${from.search ?? ''}` : '/dashboard'
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -18,7 +26,7 @@ export default function LoginPage() {
     try {
       await login(email, password)
       toast.success('Welcome back!')
-      navigate('/dashboard')
+      navigate(redirectTo, { replace: true })
     } catch (err: any) {
       const message = err.message || 'Login failed'
       setError(message)
@@ -36,7 +44,7 @@ export default function LoginPage() {
         : { email: 'demo@coinbidex.io',  password: 'Demo@123456'  }
       await login(creds.email, creds.password)
       toast.success(`${role === 'admin' ? 'Admin' : 'Demo'} mode activated!`)
-      navigate('/dashboard')
+      navigate(redirectTo, { replace: true })
     } catch {
       toast.error('Demo login failed — run the seeder first')
     }

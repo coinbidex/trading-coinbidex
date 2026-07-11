@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import Layout       from '@/components/layout/Layout'
 import AuthLayout   from '@/components/layout/AuthLayout'
@@ -19,12 +19,18 @@ import VerifyEmailPage from '@/pages/VerifyEmailPage'
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
+  const location = useLocation()
+  // Carries the page the user actually wanted through to /login (and from
+  // there, to RegisterPage too) via router state, so LoginPage/RegisterPage
+  // can send them back to it after a successful sign-in instead of always
+  // dropping them on /dashboard.
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" state={{ from: location }} replace />
 }
 
 function AdminOnly({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore()
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  const location = useLocation()
+  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />
   if (user?.role !== 'ADMIN') return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
