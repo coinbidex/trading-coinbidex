@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { submitListing, getListings, getMyListings, reviewListing } from '../controllers/listingController';
+import { submitListing, getListings, getMyListings, reviewListing, getListingPricing } from '../controllers/listingController';
 import { authenticate, requireRole } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 
 const router = Router();
 
 router.get('/', getListings);
+router.get('/pricing', getListingPricing);
 router.get('/mine', authenticate, getMyListings);
 router.post('/', authenticate, [
   body('projectName').notEmpty().trim(),
@@ -16,6 +17,7 @@ router.post('/', authenticate, [
   body('website').isURL(),
   body('totalSupply').notEmpty(),
   body('blockchain').notEmpty(),
+  body('packageId').notEmpty().withMessage('Choose a listing package — see GET /listings/pricing'),
 ], validate, submitListing);
 router.patch('/:id/review', authenticate, requireRole('ADMIN'), [
   body('status').isIn(['APPROVED', 'REJECTED', 'LIVE', 'SUSPENDED', 'UNDER_REVIEW']),

@@ -4,7 +4,7 @@ import Layout       from '@/components/layout/Layout'
 import AuthLayout   from '@/components/layout/AuthLayout'
 import Dashboard    from '@/pages/Dashboard'
 import TradingPage  from '@/pages/TradingPage'
-import SwapPage     from '@/pages/SwapPage'
+import SwapPageRouter from '@/pages/SwapPageRouter'
 import MarketsPage  from '@/pages/MarketsPage'
 import WalletPage   from '@/pages/WalletPage'
 import OrdersPage   from '@/pages/OrdersPage'
@@ -50,7 +50,7 @@ export default function App() {
         <Route path="/dashboard"     element={<Dashboard />} />
         <Route path="/trade"         element={<TradingPage />} />
         <Route path="/trade/:symbol" element={<TradingPage />} />
-        <Route path="/swap"          element={<SwapPage />} />
+        <Route path="/swap"          element={<SwapPageRouter />} />
         <Route path="/markets"       element={<MarketsPage />} />
         <Route path="/wallet"        element={<WalletPage />} />
         <Route path="/orders"        element={<OrdersPage />} />

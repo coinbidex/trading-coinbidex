@@ -33,6 +33,11 @@ import watchlistRoutes     from './routes/watchlist'
 import notificationRoutes  from './routes/notifications'
 import moonpayRoutes       from './routes/moonpay'
 import configRoutes        from './routes/config'
+import invoiceRoutes       from './routes/invoices'
+import ticketRoutes        from './routes/tickets'
+import paymentRoutes       from './routes/payments'
+import publicConfigRoutes  from './routes/publicConfig'
+import { startExpiryService } from './services/expiryService'
 import { generalLimiter, authLimiter } from './middleware/rateLimiter'
 
 const app        = express()
@@ -62,6 +67,11 @@ app.use(cors({
   methods:        ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization','X-API-Key'],
 }))
+// Stripe webhook needs the raw request body for signature verification —
+// must be mounted before express.json() below, or every webhook call fails
+// signature checks even with a correct secret. See routes/payments.ts.
+app.use('/api/v1/payments', express.raw({ type: 'application/json' }), paymentRoutes)
+
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
@@ -102,6 +112,9 @@ app.use(`${v1}/swaps`,          swapRoutes)
 app.use(`${v1}/transactions`,   transactionRoutes)
 app.use(`${v1}/listings`,       listingRoutes)
 app.use(`${v1}/advertisements`, advertisementRoutes)
+app.use(`${v1}/invoices`,       invoiceRoutes)
+app.use(`${v1}/tickets`,        ticketRoutes)
+app.use(`${v1}/public-config`,  publicConfigRoutes)
 app.use(`${v1}/assets`,         assetRoutes)
 app.use(`${v1}/admin`,          adminRoutes)
 app.use(`${v1}/watchlist`,      watchlistRoutes)
@@ -149,6 +162,8 @@ async function bootstrap() {
 
     startPriceAlertService(io)
     logger.info('✅ Price alerts ready')
+
+    startExpiryService()
 
     httpServer.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Coinbidex [${platformConfig.mode.toUpperCase()}] running on port ${PORT}`)

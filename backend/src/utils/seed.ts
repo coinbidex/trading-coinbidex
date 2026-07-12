@@ -110,6 +110,27 @@ async function seed() {
     create: { key:'PLATFORM_MODE', value:isDemo ? 'demo' : 'live', description:'Platform operating mode' }
   });
 
+  // Promotion packages — flat, realistic pricing for a growing exchange.
+  // Replaces the old flat 0.1 BTC listing fee (~$6,500 at current prices —
+  // high enough to turn away exactly the early-stage projects most likely
+  // to actually want a new exchange) and the CPC/CPM ad model.
+  const packages: Array<{ type: 'LISTING' | 'ADVERTISEMENT'; name: string; durationHours: number; price: number; sortOrder: number }> = [
+    { type: 'LISTING',       name: '1 Week Listing',   durationHours: 24 * 7,   price: 49,   sortOrder: 1 },
+    { type: 'LISTING',       name: '1 Month Listing',  durationHours: 24 * 30,  price: 149,  sortOrder: 2 },
+    { type: 'LISTING',       name: '3 Month Listing',  durationHours: 24 * 90,  price: 349,  sortOrder: 3 },
+    { type: 'LISTING',       name: '1 Year Listing',   durationHours: 24 * 365, price: 999,  sortOrder: 4 },
+    { type: 'ADVERTISEMENT', name: '1 Day Banner',     durationHours: 24,       price: 15,   sortOrder: 1 },
+    { type: 'ADVERTISEMENT', name: '1 Week Banner',    durationHours: 24 * 7,   price: 79,   sortOrder: 2 },
+    { type: 'ADVERTISEMENT', name: '1 Month Banner',   durationHours: 24 * 30,  price: 249,  sortOrder: 3 },
+    { type: 'ADVERTISEMENT', name: '1 Year Banner',    durationHours: 24 * 365, price: 1999, sortOrder: 4 },
+  ];
+  for (const pkg of packages) {
+    const existing = await prisma.promoPackage.findFirst({ where: { type: pkg.type, name: pkg.name } });
+    if (!existing) {
+      await prisma.promoPackage.create({ data: pkg });
+    }
+  }
+
   console.log(`
   ✅ Admin  : admin@coinbidex.io / Admin@123456
   ✅ Demo   : demo@coinbidex.io  / Demo@123456

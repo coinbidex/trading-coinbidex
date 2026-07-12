@@ -80,6 +80,7 @@ enum ListingStatus {
   APPROVED
   LIVE
   SUSPENDED
+  EXPIRED
   REJECTED
 }
 
@@ -146,6 +147,10 @@ model User {
   apiKeys         ApiKey[]
   sessions        Session[]
   kycDocuments    KYCDocument[]
+  invoices        Invoice[]
+  tickets         Ticket[]        @relation("TicketOwner")
+  ticketMessages  TicketMessage[]
+  auditLogs       AdminAuditLog[]
   referrals       User[]     @relation("Referral")
   referrer        User?      @relation("Referral", fields: [referredBy], references: [referralCode])
   priceAlerts     PriceAlert[]
@@ -424,17 +429,21 @@ model Listing {
   auditReport     String?
   logoUrl         String?
   bannerUrl       String?
-  listingFee      Decimal       @db.Decimal(28, 8)
+  listingFee      Decimal       @db.Decimal(10, 2)
+  packageId       String?
   feePaid         Boolean       @default(false)
   reviewNotes     String?
   reviewedBy      String?
   reviewedAt      DateTime?
   listedAt        DateTime?
+  activeUntil     DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   user            User          @relation(fields: [userId], references: [id])
   asset           Asset         @relation(fields: [assetId], references: [id])
+  package         PromoPackage? @relation(fields: [packageId], references: [id])
+  invoices        Invoice[]
 
   @@index([userId])
   @@index([status])
@@ -449,10 +458,11 @@ model Advertisement {
   description     String?
   imageUrl        String?
   targetUrl       String?
-  budget          Decimal   @db.Decimal(28, 8)
-  spent           Decimal   @default(0) @db.Decimal(28, 8)
-  cpc             Decimal?  @db.Decimal(28, 8) // cost per click
-  cpm             Decimal?  @db.Decimal(28, 8) // cost per 1000 impressions
+  budget          Decimal?  @db.Decimal(10, 2)
+  spent           Decimal   @default(0) @db.Decimal(10, 2)
+  cpc             Decimal?  @db.Decimal(10, 2) // cost per click — legacy self-serve campaigns only
+  cpm             Decimal?  @db.Decimal(10, 2) // cost per 1000 impressions — legacy self-serve campaigns only
+  packageId       String?
   impressions     Int       @default(0)
   clicks          Int       @default(0)
   targetCountries String[]
@@ -464,7 +474,9 @@ model Advertisement {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  user            User      @relation(fields: [userId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
+  package         PromoPackage? @relation(fields: [packageId], references: [id])
+  invoices        Invoice[]
 
   @@index([userId])
   @@index([status])
@@ -539,4 +551,139 @@ model SystemConfig {
   value       String
   description String?
   updatedAt   DateTime @updatedAt
+}
+
+// ── Promotions: packages, invoices ──────────────────────────────
+// Flat-fee, duration-based pricing for both token listings and ads —
+// replaces the old fixed-0.1-BTC listing fee and CPC/CPM ad model with
+// simple "pick a package, pay a flat fee, stay live for that long" pricing.
+
+enum PackageType {
+  LISTING
+  ADVERTISEMENT
+}
+
+model PromoPackage {
+  id            String      @id @default(uuid())
+  type          PackageType
+  name          String        // e.g. "1 Week Featured Listing"
+  durationHours Int           // 1=hour, 24=day, 168=week, 720=month, 8760=year
+  price         Decimal       @db.Decimal(10, 2)
+  isActive      Boolean       @default(true)
+  sortOrder     Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  invoices      Invoice[]
+  listings      Listing[]
+  advertisements Advertisement[]
+
+  @@index([type])
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+  MANUAL
+}
+
+model Invoice {
+  id              String           @id @default(uuid())
+  invoiceNumber   String           @unique   // e.g. CB-2026-000123
+  userId          String
+  packageId       String
+  listingId       String?
+  advertisementId String?
+  amount          Decimal          @db.Decimal(10, 2)
+  currency        String           @default("USD")
+  status          InvoiceStatus    @default(PENDING)
+  provider        PaymentProvider?
+  providerRef     String?          // Stripe PaymentIntent/Session id, or PayPal order id
+  paidAt          DateTime?
+  dueAt           DateTime?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id])
+  package         PromoPackage     @relation(fields: [packageId], references: [id])
+  listing         Listing?         @relation(fields: [listingId], references: [id])
+  advertisement   Advertisement?   @relation(fields: [advertisementId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ── Support ticketing ────────────────────────────────────────────
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Ticket {
+  id          String         @id @default(uuid())
+  userId      String
+  subject     String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(NORMAL)
+  category    String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user        User            @relation("TicketOwner", fields: [userId], references: [id])
+  messages    TicketMessage[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model TicketMessage {
+  id         String   @id @default(uuid())
+  ticketId   String
+  authorId   String
+  isAdmin    Boolean  @default(false)
+  body       String
+  createdAt  DateTime @default(now())
+
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId])
+}
+
+// ── Admin audit log ──────────────────────────────────────────────
+// One row per meaningful admin action (approve/reject a listing, mark an
+// invoice paid, etc) — gives a real paper trail instead of trusting logs
+// that roll off after a few days.
+
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  action     String    // e.g. "invoice.mark_paid", "listing.approve"
+  entityType String    // "Invoice" | "Listing" | "Advertisement" | "Ticket"
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  admin      User     @relation(fields: [adminId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([adminId])
 }
