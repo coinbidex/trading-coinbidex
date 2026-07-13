@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, LogIn, AlertCircle, ShieldCheck, KeyRound } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import toast from 'react-hot-toast'
 
@@ -52,8 +52,13 @@ export default function LoginPage() {
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold text-dark-900 dark:text-white mb-1 text-center">Welcome back</h2>
-      <p className="text-dark-400 text-sm mb-8 text-center">Sign in to your Coinbidex account</p>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="badge badge-blue">
+          <ShieldCheck size={11} /> Enterprise Secure Sign-in
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-dark-900 dark:text-white mt-3 mb-1">Welcome back</h2>
+      <p className="text-dark-400 text-sm mb-7">Sign in to access your trading account</p>
 
       {error && (
         <div className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 rounded-lg px-3 py-2.5 mb-4 text-sm">
@@ -65,12 +70,12 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-medium text-dark-500 dark:text-dark-300 mb-1.5">Email address</label>
-          <input className="input" type="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email"/>
+          <input className="input" type="email" placeholder="you@company.com" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email"/>
         </div>
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-medium text-dark-500 dark:text-dark-300">Password</label>
-            <Link to="/forgot-password" className="text-xs text-brand-500 hover:text-brand-600">Forgot password?</Link>
+            <Link to="/forgot-password" className="text-xs text-brand-500 hover:text-brand-600 font-medium">Forgot password?</Link>
           </div>
           <div className="relative">
             <input className="input pr-10" type={showPw?'text':'password'} placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password"/>
@@ -79,15 +84,40 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
-        <button type="submit" disabled={isLoading} className="btn-primary w-full py-2.5 mt-2">
+
+        <label className="flex items-center gap-2 text-xs text-dark-400 cursor-pointer select-none">
+          <input type="checkbox" className="w-3.5 h-3.5 rounded border-dark-300 dark:border-dark-600 text-brand-500 focus:ring-brand-500/30" />
+          Keep me signed in on this device
+        </label>
+
+        <button type="submit" disabled={isLoading} className="btn-primary w-full py-2.5 mt-1">
           {isLoading
             ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
             : <><LogIn size={16}/> Sign in</>
           }
         </button>
       </form>
-      <p className="text-center text-sm text-dark-400 mt-6">
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dark-100 dark:border-dark-800" /></div>
+        <div className="relative flex justify-center"><span className="bg-white dark:bg-dark-950 px-3 text-xs text-dark-400">Try the platform</span></div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => demoLogin('trader')} className="btn-secondary w-full text-xs py-2">
+          <KeyRound size={13}/> Demo trader
+        </button>
+        <button onClick={() => demoLogin('admin')} className="btn-secondary w-full text-xs py-2">
+          <ShieldCheck size={13}/> Demo admin
+        </button>
+      </div>
+
+      <p className="text-center text-sm text-dark-400 mt-7">
         No account? <Link to="/register" className="text-brand-500 hover:text-brand-600 font-medium">Create one free</Link>
+      </p>
+
+      <p className="text-center text-[11px] text-dark-300 dark:text-dark-600 mt-6 flex items-center justify-center gap-1.5">
+        <ShieldCheck size={12}/> Protected by 256-bit encryption &amp; continuous monitoring
       </p>
     </div>
   )

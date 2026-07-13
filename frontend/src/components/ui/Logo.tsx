@@ -1,3 +1,9 @@
+interface LogoProps {
+  size?: 'sm' | 'md' | 'lg'
+  variant?: 'full' | 'icon'
+  className?: string
+}
+
 export default function Logo({ size = 'md', variant = 'full', className = '' }: LogoProps) {
   const sizeClasses = {
     sm: 'h-8',   // 32px height

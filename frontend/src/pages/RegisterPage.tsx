@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Eye, EyeOff, UserPlus } from 'lucide-react'
+import { Eye, EyeOff, UserPlus, ShieldCheck } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import toast from 'react-hot-toast'
 
@@ -31,8 +31,11 @@ export default function RegisterPage() {
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold text-dark-900 dark:text-white mb-1 text-center">Create account</h2>
-      <p className="text-dark-400 text-sm mb-8 text-center">Join 500,000+ traders on Coinbidex</p>
+      <span className="badge badge-blue">
+        <ShieldCheck size={11} /> Enterprise Secure Onboarding
+      </span>
+      <h2 className="text-2xl font-bold text-dark-900 dark:text-white mt-3 mb-1">Create your account</h2>
+      <p className="text-dark-400 text-sm mb-7">Join 500,000+ traders on Coinbidex</p>
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">

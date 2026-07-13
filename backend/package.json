@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:seed": "tsx src/utils/seed.ts",
+    "prisma:seed:prod": "node dist/utils/seed.js",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
@@ -33,7 +34,6 @@
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
     "node-cache": "^5.1.2",
-    "pdfkit": "^0.15.1",
     "socket.io": "^4.8.0",
     "stripe": "^17.3.1",
     "uuid": "^10.0.0",
@@ -53,7 +53,6 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.9.0",
     "@types/node-cron": "^3.0.11",
-    "@types/pdfkit": "^0.13.5",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.5.13",
     "prisma": "^5.22.0",

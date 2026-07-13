@@ -4,7 +4,7 @@ import Layout       from '@/components/layout/Layout'
 import AuthLayout   from '@/components/layout/AuthLayout'
 import Dashboard    from '@/pages/Dashboard'
 import TradingPage  from '@/pages/TradingPage'
-import SwapPageRouter from '@/pages/SwapPageRouter'
+import SwapPage     from '@/pages/SwapPage'
 import MarketsPage  from '@/pages/MarketsPage'
 import WalletPage   from '@/pages/WalletPage'
 import OrdersPage   from '@/pages/OrdersPage'
@@ -38,10 +38,11 @@ function AdminOnly({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/"              element={<LandingPage />} />
       <Route path="/verify-email"  element={<VerifyEmailPage />} />
+      <Route path="/welcome"       element={<LandingPage />} />
 
       <Route element={<AuthLayout />}>
+        <Route path="/"          element={<LoginPage />} />
         <Route path="/login"    element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>
@@ -50,7 +51,7 @@ export default function App() {
         <Route path="/dashboard"     element={<Dashboard />} />
         <Route path="/trade"         element={<TradingPage />} />
         <Route path="/trade/:symbol" element={<TradingPage />} />
-        <Route path="/swap"          element={<SwapPageRouter />} />
+        <Route path="/swap"          element={<SwapPage />} />
         <Route path="/markets"       element={<MarketsPage />} />
         <Route path="/wallet"        element={<WalletPage />} />
         <Route path="/orders"        element={<OrdersPage />} />

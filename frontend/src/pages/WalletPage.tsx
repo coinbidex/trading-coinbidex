@@ -11,6 +11,7 @@ import api from '@/utils/api'
 import { fmt, cn } from '@/utils/format'
 import { CHAIN_NAMES, CHAIN_NATIVE, CHAIN_EXPLORER, TOKEN_CONTRACTS } from '@/utils/web3Config'
 import ConnectWalletModal from '@/components/ui/ConnectWalletModal'
+import CoinIcon from '@/components/ui/CoinIcon'
 import MoonPayEmbed from '@/components/ui/MoonPayEmbed'
 import toast from 'react-hot-toast'
 
@@ -214,9 +215,7 @@ export default function WalletPage() {
                   allBalances.map((b, i) => (
                     <div key={b.symbol} className={cn('flex items-center justify-between px-5 py-3.5 hover:bg-dark-50 dark:hover:bg-dark-800/30 transition-colors', i < allBalances.length-1 && 'border-b border-dark-100 dark:border-dark-800')}>
                       <div className="flex items-center gap-3">
-                        <div className={cn('w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold', b.isNative ? 'bg-brand-100 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400' : 'bg-dark-100 dark:bg-dark-700 text-dark-500 dark:text-dark-300')}>
-                          {b.symbol.slice(0,3)}
-                        </div>
+                        <CoinIcon symbol={b.symbol} size={36} />
                         <div>
                           <p className="font-semibold text-dark-900 dark:text-white text-sm">{b.symbol}</p>
                           <p className="text-xs text-dark-400">{b.name}</p>

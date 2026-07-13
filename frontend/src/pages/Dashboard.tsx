@@ -4,9 +4,12 @@ import { Link } from 'react-router-dom'
 import api from '@/utils/api'
 import { useAuthStore } from '@/store/authStore'
 import { fmt, colorClass } from '@/utils/format'
+import CoinIcon from '@/components/ui/CoinIcon'
+import { useLivePrices } from '@/hooks/useLivePrices'
 
 export default function Dashboard() {
   const { user } = useAuthStore()
+  const { get: getLive } = useLivePrices()
 
   const { data: wallets } = useQuery({
     queryKey: ['wallets'],
@@ -90,7 +93,7 @@ export default function Dashboard() {
             {wallets?.filter((w: any) => parseFloat(w.balance) > 0).slice(0, 6).map((w: any) => (
               <div key={w.id} className="flex items-center justify-between px-5 py-3">
                 <div className="flex items-center gap-3">
-                  <img src={w.asset?.logoUrl} alt="" className="w-7 h-7 rounded-full bg-dark-700" onError={e => (e.currentTarget.style.display='none')} />
+                  <CoinIcon symbol={w.asset?.symbol || ''} src={w.asset?.logoUrl} size={32} />
                   <div>
                     <p className="text-sm font-semibold text-white">{w.asset?.symbol}</p>
                     <p className="text-xs text-dark-400">{w.asset?.name}</p>
@@ -124,15 +127,22 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="divide-y ">
-              {topGainers.map((t: any) => (
-                <Link key={t.symbol} to={`/trade/${t.symbol}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-dark-800/50 transition-colors">
-                  <span className="text-sm font-medium text-dark-500">{t.symbol.replace('USDT', '')}</span>
-                  <div className="text-right">
-                    <p className="text-xs font-mono text-dark-500">${fmt.price(t.lastPrice)}</p>
-                    <p className="text-xs font-mono text-emerald-400">{fmt.pct(t.priceChangePct)}</p>
-                  </div>
-                </Link>
-              ))}
+              {topGainers.map((t: any) => {
+                const live = getLive(t.symbol)
+                const price = t.lastPrice > 0 ? t.lastPrice : (live?.price ?? 0)
+                const pct = t.priceChangePct || live?.changePct || 0
+                return (
+                  <Link key={t.symbol} to={`/trade/${t.symbol}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-dark-50 dark:hover:bg-dark-800/50 transition-colors">
+                    <span className="flex items-center gap-2 text-sm font-medium text-dark-700 dark:text-dark-200">
+                      <CoinIcon symbol={t.symbol} size={20} /> {t.symbol.replace('USDT', '')}
+                    </span>
+                    <div className="text-right">
+                      <p className="text-xs font-mono text-dark-700 dark:text-dark-300">${fmt.price(price)}</p>
+                      <p className="text-xs font-mono text-emerald-600 dark:text-emerald-400">{fmt.pct(pct)}</p>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           </div>
 
@@ -144,15 +154,22 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="divide-y">
-              {topLosers.map((t: any) => (
-                <Link key={t.symbol} to={`/trade/${t.symbol}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-dark-800/50 transition-colors">
-                  <span className="text-sm font-medium text-dark-500">{t.symbol.replace('USDT', '')}</span>
-                  <div className="text-right">
-                    <p className="text-xs font-mono text-dark-500">${fmt.price(t.lastPrice)}</p>
-                    <p className="text-xs font-mono text-red-400">{fmt.pct(t.priceChangePct)}</p>
-                  </div>
-                </Link>
-              ))}
+              {topLosers.map((t: any) => {
+                const live = getLive(t.symbol)
+                const price = t.lastPrice > 0 ? t.lastPrice : (live?.price ?? 0)
+                const pct = t.priceChangePct || live?.changePct || 0
+                return (
+                  <Link key={t.symbol} to={`/trade/${t.symbol}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-dark-50 dark:hover:bg-dark-800/50 transition-colors">
+                    <span className="flex items-center gap-2 text-sm font-medium text-dark-700 dark:text-dark-200">
+                      <CoinIcon symbol={t.symbol} size={20} /> {t.symbol.replace('USDT', '')}
+                    </span>
+                    <div className="text-right">
+                      <p className="text-xs font-mono text-dark-700 dark:text-dark-300">${fmt.price(price)}</p>
+                      <p className="text-xs font-mono text-red-600 dark:text-red-400">{fmt.pct(pct)}</p>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           </div>
         </div>
