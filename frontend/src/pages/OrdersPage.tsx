@@ -4,6 +4,7 @@ import { ClipboardList, X, TrendingUp, TrendingDown } from 'lucide-react'
 import api from '@/utils/api'
 import { fmt, cn } from '@/utils/format'
 import toast from 'react-hot-toast'
+import CoinIcon from '@/components/ui/CoinIcon'
 
 type OrderTab = 'open' | 'history' | 'trades'
 
@@ -94,7 +95,7 @@ export default function OrdersPage() {
               ) : openOrders.map((o: any) => (
                 <tr key={o.id} className="border-b border-dark-100 dark:border-dark-800 hover:bg-dark-50 dark:hover:bg-dark-800/30 transition-colors">
                   <td className="px-4 py-3 text-xs text-dark-400">{fmt.datetime(o.createdAt)}</td>
-                  <td className="px-4 py-3 font-mono font-medium text-dark-900 dark:text-white">{o.symbol}</td>
+                  <td className="px-4 py-3 font-mono font-medium text-dark-900 dark:text-white"><span className="flex items-center gap-2"><CoinIcon symbol={o.symbol} size={18}/>{o.symbol}</span></td>
                   <td className="px-4 py-3 text-xs text-dark-500 dark:text-dark-400 capitalize">{String(o.type).toLowerCase()}</td>
                   <td className="px-4 py-3">
                     <span className={cn('font-semibold text-xs', o.side === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
@@ -143,7 +144,7 @@ export default function OrdersPage() {
               ) : historyOrders.map((o: any) => (
                 <tr key={o.id} className="border-b border-dark-100 dark:border-dark-800 hover:bg-dark-50 dark:hover:bg-dark-800/30">
                   <td className="px-4 py-3 text-xs text-dark-400">{fmt.datetime(o.createdAt)}</td>
-                  <td className="px-4 py-3 font-mono font-medium text-dark-900 dark:text-white">{o.symbol}</td>
+                  <td className="px-4 py-3 font-mono font-medium text-dark-900 dark:text-white"><span className="flex items-center gap-2"><CoinIcon symbol={o.symbol} size={18}/>{o.symbol}</span></td>
                   <td className="px-4 py-3 text-xs text-dark-500 capitalize">{String(o.type).toLowerCase()}</td>
                   <td className="px-4 py-3">
                     <span className={cn('font-semibold text-xs', o.side === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
@@ -182,7 +183,7 @@ export default function OrdersPage() {
               ) : myTrades.map((t: any) => (
                 <tr key={t.id} className="border-b border-dark-100 dark:border-dark-800 hover:bg-dark-50 dark:hover:bg-dark-800/30">
                   <td className="px-4 py-3 text-xs text-dark-400">{fmt.datetime(t.createdAt)}</td>
-                  <td className="px-4 py-3 font-mono font-medium text-dark-900 dark:text-white">{t.symbol}</td>
+                  <td className="px-4 py-3 font-mono font-medium text-dark-900 dark:text-white"><span className="flex items-center gap-2"><CoinIcon symbol={t.symbol} size={18}/>{t.symbol}</span></td>
                   <td className="px-4 py-3">
                     <span className={cn('font-semibold text-xs', t.side === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
                       {t.side}

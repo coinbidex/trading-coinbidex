@@ -12,6 +12,7 @@ import { fmt, cn } from '@/utils/format'
 import toast from 'react-hot-toast'
 import { CHAIN_NAMES, CHAIN_NATIVE, CHAIN_EXPLORER, TOKEN_CONTRACTS } from '@/utils/web3Config'
 import { usePlatformMode } from '@/contexts/PlatformModeContext'
+import CoinIcon from '@/components/ui/CoinIcon'
 
 // ── Token list for each chain ─────────────────────────────────
 const TOKENS_BY_CHAIN: Record<number, Array<{ symbol: string; name: string; icon: string }>> = {
@@ -310,7 +311,7 @@ export default function SwapPage() {
                   onClick={() => setShowFromList(!showFromList)}
                   className="flex items-center gap-2 bg-white dark:bg-dark-700 border border-dark-200 dark:border-dark-600 rounded-xl px-3 py-2.5 hover:border-brand-300 dark:hover:border-brand-500/50 transition-all min-w-[110px]"
                 >
-                  <span className="text-base leading-none">{fromTokenMeta?.icon}</span>
+                  <CoinIcon symbol={fromToken} size={20} />
                   <span className="font-semibold text-sm text-dark-900 dark:text-white">{fromToken}</span>
                   <ChevronDown size={12} className="text-dark-400 ml-auto"/>
                 </button>
@@ -321,7 +322,7 @@ export default function SwapPage() {
                         className={cn('w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-dark-50 dark:hover:bg-dark-800 transition-colors text-left',
                           fromToken === t.symbol && 'bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400'
                         )}>
-                        <span>{t.icon}</span>
+                        <CoinIcon symbol={t.symbol} size={20} />
                         <div><p className="font-medium text-dark-900 dark:text-white">{t.symbol}</p><p className="text-xs text-dark-400">{t.name}</p></div>
                       </button>
                     ))}
@@ -360,7 +361,7 @@ export default function SwapPage() {
                   onClick={() => setShowToList(!showToList)}
                   className="flex items-center gap-2 bg-white dark:bg-dark-700 border border-dark-200 dark:border-dark-600 rounded-xl px-3 py-2.5 hover:border-brand-300 dark:hover:border-brand-500/50 transition-all min-w-[110px]"
                 >
-                  <span className="text-base leading-none">{toTokenMeta?.icon}</span>
+                  <CoinIcon symbol={toToken} size={20} />
                   <span className="font-semibold text-sm text-dark-900 dark:text-white">{toToken}</span>
                   <ChevronDown size={12} className="text-dark-400 ml-auto"/>
                 </button>
@@ -371,7 +372,7 @@ export default function SwapPage() {
                         className={cn('w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-dark-50 dark:hover:bg-dark-800 transition-colors text-left',
                           toToken === t.symbol && 'bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400'
                         )}>
-                        <span>{t.icon}</span>
+                        <CoinIcon symbol={t.symbol} size={20} />
                         <div><p className="font-medium text-dark-900 dark:text-white">{t.symbol}</p><p className="text-xs text-dark-400">{t.name}</p></div>
                       </button>
                     ))}

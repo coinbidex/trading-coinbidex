@@ -9,6 +9,7 @@ import WalletButton from '@/components/ui/WalletButton'
 import ModeBadge from '@/components/ui/ModeBadge'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import Logo from '@/components/ui/Logo'
+import CoinIcon from '@/components/ui/CoinIcon'
 
 export default function Topbar() {
   const { user } = useAuthStore()
@@ -73,7 +74,7 @@ export default function Topbar() {
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dark-50 dark:hover:bg-dark-800 text-left transition-colors"
                   onClick={() => { navigate(`/trade/${m.symbol}`); setShowResults(false); setSearch('') }}
                 >
-                  <img src={m.baseAsset?.logoUrl} alt="" className="w-6 h-6 rounded-full" onError={e => (e.currentTarget.style.display='none')}/>
+                  <CoinIcon symbol={m.symbol} src={m.baseAsset?.logoUrl} size={24} />
                   <div>
                     <p className="text-sm font-medium text-dark-900 dark:text-white">{m.symbol}</p>
                     <p className="text-xs text-dark-400">{m.baseAsset?.name}</p>

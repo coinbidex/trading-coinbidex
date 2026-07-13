@@ -38,10 +38,11 @@ function AdminOnly({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/"              element={<LandingPage />} />
       <Route path="/verify-email"  element={<VerifyEmailPage />} />
+      <Route path="/welcome"       element={<LandingPage />} />
 
       <Route element={<AuthLayout />}>
+        <Route path="/"          element={<LoginPage />} />
         <Route path="/login"    element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>

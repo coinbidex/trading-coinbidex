@@ -7,6 +7,8 @@ import api from '@/utils/api'
 import { useMarketSocket } from '@/utils/socket'
 import { fmt, colorClass, cn } from '@/utils/format'
 import toast from 'react-hot-toast'
+import CoinIcon from '@/components/ui/CoinIcon'
+import { useLivePrices } from '@/hooks/useLivePrices'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Ticker {
@@ -258,6 +260,9 @@ export default function TradingPage() {
 
   const pctChange  = liveTicker?.priceChangePct ?? 0
   const isPositive = pctChange >= 0
+  const { get: getLive } = useLivePrices()
+  const fallbackLive = getLive(symbol)
+  const displayPrice = liveTicker?.lastPrice && liveTicker.lastPrice > 0 ? liveTicker.lastPrice : (fallbackLive?.price ?? 0)
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in min-h-0">
@@ -269,17 +274,19 @@ export default function TradingPage() {
             onClick={() => setShowSymbols(!showSymbols)}
             className="flex items-center gap-2 font-display font-bold text-lg text-dark-900 dark:text-white hover:text-brand-500 transition-colors"
           >
+            <CoinIcon symbol={symbol} size={24} />
             {symbol.replace('USDT','')}<span className="text-dark-400 font-normal text-sm">/USDT</span>
             <ChevronDown size={16} className={cn('text-dark-400 transition-transform', showSymbols && 'rotate-180')}/>
           </button>
           {showSymbols && (
-            <div className="absolute top-full left-0 mt-1 w-48 card shadow-xl z-50 overflow-hidden">
+            <div className="absolute top-full left-0 mt-1 w-52 card shadow-xl z-50 overflow-hidden">
               {SYMBOLS.map(s => (
                 <button key={s} onClick={() => handleSymbolChange(s)}
                   className={cn(
-                    'w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-dark-50 dark:hover:bg-dark-800 transition-colors',
+                    'w-full flex items-center gap-2.5 text-left px-4 py-2.5 text-sm font-medium hover:bg-dark-50 dark:hover:bg-dark-800 transition-colors',
                     s === symbol ? 'text-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'text-dark-700 dark:text-dark-200'
                   )}>
+                  <CoinIcon symbol={s} size={18} />
                   {s.replace('USDT','')} <span className="text-dark-400">/USDT</span>
                 </button>
               ))}
@@ -291,7 +298,7 @@ export default function TradingPage() {
           <div className="flex flex-wrap items-center gap-5">
             <div>
               <span className={`text-2xl font-mono font-bold ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
-                ${fmt.price(liveTicker.lastPrice)}
+                ${fmt.price(displayPrice)}
               </span>
             </div>
             {[

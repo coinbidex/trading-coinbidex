@@ -12,6 +12,7 @@ import RoutingStatus from '@/components/ui/RoutingStatus'
 
 type AdminTab = 'dashboard' | 'revenue' | 'users' | 'listings' | 'ads' | 'withdrawals' | 'config'
 
+// ── Config Manager ────────────────────────────────────────────
 // SINGLE declaration of ConfigManager - no duplicates
 function ConfigManager() {
   const qc = useQueryClient()
