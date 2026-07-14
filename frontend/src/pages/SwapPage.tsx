@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import { CHAIN_NAMES, CHAIN_NATIVE, CHAIN_EXPLORER, TOKEN_CONTRACTS } from '@/utils/web3Config'
 import { usePlatformMode } from '@/contexts/PlatformModeContext'
 import CoinIcon from '@/components/ui/CoinIcon'
+import ChangeNowSwapWidget from '@/components/ui/ChangeNowSwapWidget'
 
 // ── Token list for each chain ─────────────────────────────────
 const TOKENS_BY_CHAIN: Record<number, Array<{ symbol: string; name: string; icon: string }>> = {
@@ -47,7 +48,7 @@ const TOKENS_BY_CHAIN: Record<number, Array<{ symbol: string; name: string; icon
 
 const DEFAULT_TOKENS = TOKENS_BY_CHAIN[1]
 
-export default function SwapPage() {
+function OneInchSwap() {
   const qc = useQueryClient()
   const { address, isConnected } = useAccount()
   const { isDemo, isLive } = usePlatformMode()
@@ -506,4 +507,20 @@ export default function SwapPage() {
       </div>
     </div>
   )
+}
+
+// ── Widget switcher ─────────────────────────────────────────────
+// The admin panel (Config & Keys → Swap → "Active Swap Widget") controls
+// which swap experience users see. Defaults to our own 1inch-powered swap;
+// falls back to ChangeNOW's public no-key widget if 1inch is misconfigured,
+// rate-limited, or the admin simply prefers it as a backup.
+export default function SwapPage() {
+  const { data } = useQuery({
+    queryKey: ['public-config'],
+    queryFn: () => api.get('/config/public').then(r => r.data.data),
+    staleTime: 60000,
+  })
+
+  if (data?.activeSwapWidget === 'changenow') return <ChangeNowSwapWidget />
+  return <OneInchSwap />
 }

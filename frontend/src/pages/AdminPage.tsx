@@ -156,6 +156,17 @@ function ConfigManager() {
                         )}
                         {editing === cfg.key ? (
                           <div className="flex gap-2 mt-2">
+                            {cfg.key === 'ACTIVE_SWAP_WIDGET' ? (
+                              <select
+                                className="input text-sm flex-1"
+                                value={editVal}
+                                onChange={e => setEditVal(e.target.value)}
+                                autoFocus
+                              >
+                                <option value="oneinch">1inch (needs API key above)</option>
+                                <option value="changenow">ChangeNOW (no API key — good fallback)</option>
+                              </select>
+                            ) : (
                             <input
                               className="input text-sm font-mono flex-1"
                               type={cfg.secret ? 'password' : 'text'}
@@ -168,6 +179,7 @@ function ConfigManager() {
                                 if (e.key === 'Escape') setEditing(null)
                               }}
                             />
+                            )}
                             <button
                               onClick={() => saveMutation.mutate({ key: cfg.key, value: editVal })}
                               disabled={saveMutation.isPending}

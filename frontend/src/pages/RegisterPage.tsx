@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Eye, EyeOff, UserPlus, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, UserPlus } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import toast from 'react-hot-toast'
 
@@ -31,25 +31,22 @@ export default function RegisterPage() {
 
   return (
     <div className="animate-fade-in">
-      <span className="badge badge-blue">
-        <ShieldCheck size={11} /> Enterprise Secure Onboarding
-      </span>
-      <h2 className="text-2xl font-bold text-dark-900 dark:text-white mt-3 mb-1">Create your account</h2>
-      <p className="text-dark-400 text-sm mb-7">Join 500,000+ traders on Coinbidex</p>
+      <h2 className="text-2xl font-bold text-dark-900 mb-1">Create your account</h2>
+      <p className="text-dark-400 text-sm mb-7">Sign up to get started</p>
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-dark-500 dark:text-dark-300 mb-1.5">Email</label>
+            <label className="block text-xs font-medium text-dark-500 mb-1.5">Email</label>
             <input className="input" type="email" placeholder="you@example.com" value={form.email} onChange={set('email')} required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-dark-500 dark:text-dark-300 mb-1.5">Username</label>
+            <label className="block text-xs font-medium text-dark-500 mb-1.5">Username</label>
             <input className="input" type="text" placeholder="trader123" value={form.username} onChange={set('username')} required minLength={3} maxLength={20} />
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-dark-500 dark:text-dark-300 mb-1.5">Password</label>
+          <label className="block text-xs font-medium text-dark-500 mb-1.5">Password</label>
           <div className="relative">
             <input className="input pr-10" type={showPw ? 'text' : 'password'} placeholder="Min 8 chars, 1 number" value={form.password} onChange={set('password')} required />
             <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white">
@@ -58,11 +55,11 @@ export default function RegisterPage() {
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-dark-500 dark:text-dark-300 mb-1.5">Confirm password</label>
+          <label className="block text-xs font-medium text-dark-500 mb-1.5">Confirm password</label>
           <input className="input" type="password" placeholder="Repeat password" value={form.confirm} onChange={set('confirm')} required />
         </div>
         <div>
-          <label className="block text-xs font-medium text-dark-500 dark:text-dark-300 mb-1.5">Referral code <span className="text-dark-500">(optional)</span></label>
+          <label className="block text-xs font-medium text-dark-500 mb-1.5">Referral code <span className="text-dark-500">(optional)</span></label>
           <input className="input" type="text" placeholder="e.g. CRYPTEX20" value={form.referralCode} onChange={set('referralCode')} />
         </div>
 

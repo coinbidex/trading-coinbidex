@@ -4,42 +4,65 @@ import { injected, coinbaseWallet, walletConnect } from 'wagmi/connectors'
 
 export const SUPPORTED_CHAINS = [mainnet, polygon, bsc, optimism, arbitrum, base]
 
-const WC_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || ''
+// Build-time fallback (still supported for people who prefer a static .env).
+const ENV_WC_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || ''
 
-const connectors: any[] = [
-  injected({ target: 'metaMask' }),  // MetaMask specifically first
-  injected(),                         // Any other injected (Brave, Trust browser, etc.)
-  coinbaseWallet({ appName: 'Coinbidex', appLogoUrl: 'https://trade.coinbidex.com/logo.png' }),
-]
+/**
+ * The WalletConnect project ID can come from either the build-time env var
+ * OR from a value the admin saved in the admin panel (stored in the DB and
+ * fetched at runtime from GET /config/public). Previously this file only
+ * ever read the env var, so saving a project ID in the admin panel had zero
+ * effect on the deployed frontend and the "Connect Wallet" WalletConnect
+ * option stayed disabled. buildWagmiConfig() lets main.tsx fetch the DB
+ * value first and pass it in here before the app renders.
+ */
+export function buildWagmiConfig(projectIdOverride?: string) {
+  const projectId = projectIdOverride || ENV_WC_PROJECT_ID
 
-// Enable WalletConnect only if project ID is configured
-if (WC_PROJECT_ID) {
-  connectors.push(
-    walletConnect({
-      projectId: WC_PROJECT_ID,
-      metadata: {
-        name: 'Coinbidex',
-        description: 'Trade Crypto Like a Pro',
-        url: 'https://trade.coinbidex.com',
-        icons: ['https://trade.coinbidex.com/logo.png'],
-      },
-      showQrModal: true,  // Shows the QR code modal automatically
-    })
-  )
+  const connectors: any[] = [
+    injected({ target: 'metaMask' }),  // MetaMask specifically first
+    injected(),                         // Any other injected (Brave, Trust browser, etc.)
+    coinbaseWallet({ appName: 'Coinbidex', appLogoUrl: 'https://trade.coinbidex.com/logo.png' }),
+  ]
+
+  // Enable WalletConnect only if a project ID is actually configured
+  if (projectId) {
+    connectors.push(
+      walletConnect({
+        projectId,
+        metadata: {
+          name: 'Coinbidex',
+          description: 'Trade Crypto Like a Pro',
+          url: 'https://trade.coinbidex.com',
+          icons: ['https://trade.coinbidex.com/logo.png'],
+        },
+        showQrModal: true,  // Shows the QR code modal automatically
+      })
+    )
+  }
+
+  return createConfig({
+    chains: SUPPORTED_CHAINS as any,
+    connectors,
+    transports: {
+      [mainnet.id]:  http(import.meta.env.VITE_ETH_RPC  || undefined),
+      [polygon.id]:  http(import.meta.env.VITE_POLY_RPC || undefined),
+      [bsc.id]:      http(import.meta.env.VITE_BSC_RPC  || undefined),
+      [optimism.id]: http(),
+      [arbitrum.id]: http(),
+      [base.id]:     http(),
+    },
+  })
 }
 
-export const wagmiConfig = createConfig({
-  chains: SUPPORTED_CHAINS as any,
-  connectors,
-  transports: {
-    [mainnet.id]:  http(import.meta.env.VITE_ETH_RPC  || undefined),
-    [polygon.id]:  http(import.meta.env.VITE_POLY_RPC || undefined),
-    [bsc.id]:      http(import.meta.env.VITE_BSC_RPC  || undefined),
-    [optimism.id]: http(),
-    [arbitrum.id]: http(),
-    [base.id]:     http(),
-  },
-})
+// Default/initial config (env-var only) so anything that imports this
+// synchronously before the async DB fetch resolves still has a working
+// config. main.tsx swaps this out once the DB-backed project ID loads.
+export let wagmiConfig = buildWagmiConfig()
+
+export function setWagmiConfig(cfg: ReturnType<typeof buildWagmiConfig>) {
+  wagmiConfig = cfg
+}
 
 export const TOKEN_CONTRACTS: Record<number, Record<string, `0x${string}`>> = {
   1: {

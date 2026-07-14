@@ -249,9 +249,11 @@ export default function TradingPage() {
       toast.error('Enter a valid price for limit order')
       return
     }
+    const typeMap: Record<OrderType, string> = { limit: 'LIMIT', market: 'MARKET', stop: 'STOP_LIMIT' }
     orderMutation.mutate({
-      symbol, side,
-      type:      orderType.toUpperCase(),
+      marketSymbol: symbol,
+      side,
+      type:      typeMap[orderType],
       quantity:  parseFloat(quantity),
       price:     orderType !== 'market'  ? parseFloat(price)     : undefined,
       stopPrice: orderType === 'stop'    ? parseFloat(stopPrice)  : undefined,

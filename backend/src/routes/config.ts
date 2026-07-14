@@ -5,6 +5,33 @@ import { logger } from '../utils/logger'
 import { getRedis } from '../utils/redis'
 
 const router = Router()
+
+// Non-secret keys the frontend needs at runtime. Everything the admin panel
+// saves lives server-side (process.env / DB) and previously never reached
+// the browser bundle — this is what made "set the WalletConnect project ID
+// in the admin panel" have no visible effect. Only PUBLIC-safe keys belong
+// here; anything marked `secret: true` in KEY_DOCS below must never be
+// added to this list.
+const PUBLIC_KEYS = ['WALLETCONNECT_PROJECT_ID', 'MOONPAY_PUBLISHABLE_KEY', 'ACTIVE_SWAP_WIDGET'] as const
+
+router.get('/public', async (_req, res: Response) => {
+  try {
+    const configs = await prisma.systemConfig.findMany({ where: { key: { in: [...PUBLIC_KEYS] } } })
+    const map = new Map(configs.map(c => [c.key, c.value]))
+    res.json({
+      success: true,
+      data: {
+        walletConnectProjectId: map.get('WALLETCONNECT_PROJECT_ID') || process.env.WALLETCONNECT_PROJECT_ID || '',
+        moonpayPublishableKey:  map.get('MOONPAY_PUBLISHABLE_KEY')  || process.env.MOONPAY_PUBLISHABLE_KEY  || '',
+        activeSwapWidget:       map.get('ACTIVE_SWAP_WIDGET')       || process.env.ACTIVE_SWAP_WIDGET       || 'oneinch',
+      },
+    })
+  } catch (err) {
+    logger.error('Get public config error:', err)
+    res.status(500).json({ success: false, message: 'Failed to get public config' })
+  }
+})
+
 router.use(authenticate, requireRole('ADMIN'))
 
 const CONFIG_CHANNEL = 'system-config:updated'
@@ -50,6 +77,7 @@ const KEY_DOCS: Record<string, { label: string; category: string; description: s
   SMTP_USER:                { label: 'SMTP Username',          category: 'Email',    description: 'Your email address or SMTP username.', howTo: 'For Gmail: use App Password at myaccount.google.com/security', secret: false },
   SMTP_PASS:                { label: 'SMTP Password',          category: 'Email',    description: 'SMTP password or app password.', howTo: 'Gmail App Password: Google Account → Security → App Passwords', secret: true },
   WALLETCONNECT_PROJECT_ID: { label: 'WalletConnect Project ID',category:'Wallets',  description: 'QR code for mobile wallets (Trust, Rainbow).', howTo: 'cloud.walletconnect.com → New Project → Copy ID. Free.', secret: false },
+  ACTIVE_SWAP_WIDGET:       { label: 'Active Swap Widget',      category:'Swap',     description: 'Which swap provider users see on the Swap page: "oneinch" (1inch, needs API key + referral wallet above) or "changenow" (ChangeNOW, no API key required — good fallback if 1inch is down).', howTo: 'Type exactly: oneinch or changenow', secret: false },
 }
 
 router.get('/', async (req: AuthRequest, res: Response) => {
